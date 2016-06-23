@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/codegangsta/cli"
-	"os"
-	"github.com/bradfitz/gomemcache/memcache"
 	"fmt"
+	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/codegangsta/cli"
+	"github.com/sillydong/goczd/godata"
+	"os"
 	"strconv"
 	"time"
 )
@@ -23,45 +24,52 @@ func main() {
 	app.Version = APPVERSION
 	app.Commands = []cli.Command{
 		{
-			Name:"get",
-			Usage:"get value of key",
-			ArgsUsage:"key [key...]",
-			Action:get,
-			SkipFlagParsing:true,
+			Name:            "get",
+			Usage:           "get value of key",
+			ArgsUsage:       "key [key...]",
+			Action:          get,
+			SkipFlagParsing: true,
 		},
 		{
-			Name:"set",
-			Usage:"set value for key",
-			ArgsUsage:"key value expiration",
-			Action:set,
-			SkipFlagParsing:true,
+			Name:            "set",
+			Usage:           "set value for key",
+			ArgsUsage:       "key value expiration",
+			Action:          set,
+			SkipFlagParsing: true,
 		},
 		{
-			Name:"del",
-			Usage:"delete key",
-			ArgsUsage:"key [key...]",
-			Action:del,
-			SkipFlagParsing:true,
+			Name:            "del",
+			Usage:           "delete key",
+			ArgsUsage:       "key [key...]",
+			Action:          del,
+			SkipFlagParsing: true,
 		},
 		{
-			Name:"flush",
-			Usage:"flush all keys",
-			ArgsUsage:" ",
-			Action:flush,
-			SkipFlagParsing:true,
+			Name:            "flush",
+			Usage:           "flush all keys",
+			ArgsUsage:       " ",
+			Action:          flush,
+			SkipFlagParsing: true,
+		},
+		{
+			Name:            "md5",
+			Usage:           "Generate md5 string",
+			ArgsUsage:       "key",
+			Action:          md5,
+			SkipFlagParsing: true,
 		},
 	}
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:"host",
-			Value:"127.0.0.1",
-			Usage:"Host to connect",
+			Name:  "host",
+			Value: "127.0.0.1",
+			Usage: "Host to connect",
 		},
 		cli.StringFlag{
-			Name:"port",
-			Value:"11211",
-			Usage:"Port to connect",
+			Name:  "port",
+			Value: "11211",
+			Usage: "Port to connect",
 		},
 	}
 	app.Run(os.Args)
@@ -73,7 +81,7 @@ func connect(ctx *cli.Context) error {
 	if len(host) > 0 && len(port) > 0 {
 		client = memcache.New(fmt.Sprintf("%v:%v", host, port))
 		return nil
-	}else {
+	} else {
 		return fmt.Errorf("missing memcache host and port")
 	}
 }
@@ -84,20 +92,20 @@ func get(ctx *cli.Context) error {
 	}
 	if ctx.NArg() == 0 {
 		return cli.ShowCommandHelp(ctx, "get")
-	}else {
+	} else {
 		items, err := client.GetMulti(ctx.Args())
 		if err != nil {
 			return err
-		}else {
+		} else {
 			if len(items) > 0 {
 				for key, item := range items {
 					if item == nil {
 						fmt.Println("%v: not exist\n", key)
-					}else {
+					} else {
 						fmt.Printf("%v: %v\n", item.Key, string(item.Value))
 					}
 				}
-			}else {
+			} else {
 				fmt.Println("nothing found")
 			}
 		}
@@ -112,33 +120,33 @@ func set(ctx *cli.Context) error {
 	}
 	if ctx.NArg() != 2 && ctx.NArg() != 3 {
 		return cli.ShowCommandHelp(ctx, "set")
-	}else {
+	} else {
 		args := ctx.Args()
-		if (ctx.NArg() == 2) {
+		if ctx.NArg() == 2 {
 			item := &memcache.Item{}
 			item.Key = args.Get(0)
-			item.Value = []byte( args.Get(1))
+			item.Value = []byte(args.Get(1))
 			err := client.Set(item)
 			if err != nil {
 				return err
-			}else {
+			} else {
 				fmt.Println("success")
 				return nil
 			}
-		}else {
+		} else {
 			item := &memcache.Item{}
 			item.Key = args.Get(0)
-			item.Value = []byte( args.Get(1))
+			item.Value = []byte(args.Get(1))
 			expire, err := strconv.Atoi(args.Get(2))
 			if err != nil {
 				return nil
-			}else {
+			} else {
 				item.Expiration = int32(int(time.Now().Unix()) + expire)
 				fmt.Println(item.Expiration)
 				err := client.Set(item)
 				if err != nil {
 					return err
-				}else {
+				} else {
 					fmt.Println("success")
 					return nil
 				}
@@ -155,7 +163,7 @@ func del(ctx *cli.Context) error {
 
 	if ctx.NArg() == 0 {
 		return cli.ShowCommandHelp(ctx, "del")
-	}else {
+	} else {
 		args := ctx.Args()
 		for _, arg := range args {
 			fmt.Println("delete " + arg + " ...")
@@ -176,6 +184,18 @@ func flush(ctx *cli.Context) error {
 	err := client.FlushAll()
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func md5(ctx *cli.Context) error {
+	if ctx.NArg() == 0 {
+		return cli.ShowCommandHelp(ctx, "md5")
+	} else {
+		args := ctx.Args()
+		for _, arg := range args {
+			fmt.Println(godata.MD5([]byte(arg)))
+		}
 	}
 	return nil
 }
